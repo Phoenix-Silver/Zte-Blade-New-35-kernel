@@ -12,6 +12,15 @@
  *
  */
 
+/* ========================================================================================
+when             who             what, where, why                                                                            comment tag
+---------     -------       -------------------------------------------------------     --------------------------
+2010-05-20   weilanying   blade_keypad          ZTE_KEYPAD_WLY_0520
+2010-04-02   zhangtao     modified the keypad map			  ZTE_KEYPAD_ZT_20100402_001
+2010-03-23   jiangfeng     BLADE core                         
+2009-12-11     wly         support ftm mode                          ZTE_FTM_MODE_WLY_001
+2009-10-30   qhhuang       Copy from board-raise-keypad and modify "raise" to "mooncake" to support mooncake keypad      
+=========================================================================================*/
 
 #include <linux/platform_device.h>
 #include <linux/gpio_event.h>
@@ -20,24 +29,25 @@
 
 
 static unsigned int keypad_row_gpios[] = {33, 28}; 
+
 static unsigned int keypad_col_gpios[] = {37, 41, 40}; 
 
 #define KEYMAP_INDEX(row, col) ((row)*ARRAY_SIZE(keypad_col_gpios) + (col))
 
 
-static const unsigned short keypad_keymap_skate[ARRAY_SIZE(keypad_col_gpios) *
+static const unsigned short keypad_keymap_mooncake[ARRAY_SIZE(keypad_col_gpios) *
 					      ARRAY_SIZE(keypad_row_gpios)] = {
 	/*                       row, col   */
 	[KEYMAP_INDEX(0, 0)] = KEY_BACK, 
 	[KEYMAP_INDEX(0, 1)] = 0, 
-	[KEYMAP_INDEX(0, 2)] = KEY_MENU,//KEY_HOME
+	[KEYMAP_INDEX(0, 2)] = KEY_MENU,
 	[KEYMAP_INDEX(1, 0)] = KEY_VOLUMEUP,
 	[KEYMAP_INDEX(1, 1)] = KEY_VOLUMEDOWN,
-	[KEYMAP_INDEX(1, 2)] = KEY_HOME,//KEY_MEN
+	[KEYMAP_INDEX(1, 2)] = KEY_HOME,
 };
 
 
-static const unsigned short skate_keypad_virtual_keys[] = {
+static const unsigned short mooncake_keypad_virtual_keys[] = {
 	KEY_END,
 	KEY_POWER
 };
@@ -55,72 +65,69 @@ void zte_get_gpio_for_key(int *keycode)
 	{
 		keymap_index ++;
 	}
-	
-	//pr_info("[IRQWAKE]  keymap_index %d\n",keymap_index);
-	
 	do{
 		gpio_wakeup_col =  keymap_index - r * col_array_size;
 		r++;
 	}while(gpio_wakeup_col > col_array_size);
-	
-	//pr_info("[IRQWAKE]  gpio_col %d\n",gpio_wakeup_col);
 	*keycode = keypad_col_gpios[gpio_wakeup_col];
 	pr_info("[IRQWAKE]  wakeup gpio_num %d\n",*keycode);
-	
 }
-
 #endif
-/* skate keypad platform device information */
-static struct gpio_event_matrix_info skate_keypad_matrix_info = {
+/* mooncake keypad platform device information */
+static struct gpio_event_matrix_info mooncake_keypad_matrix_info = {
 	.info.func	= gpio_event_matrix_func,
-	.keymap		= keypad_keymap_skate,
+	.keymap		= keypad_keymap_mooncake,
 	.output_gpios	= keypad_row_gpios,
 	.input_gpios	= keypad_col_gpios,
 	.noutputs	= ARRAY_SIZE(keypad_row_gpios),
 	.ninputs	= ARRAY_SIZE(keypad_col_gpios),
 	.settle_time.tv.nsec = 0,
 	.poll_time.tv.nsec = 20 * NSEC_PER_MSEC,
-#if 1
-	.flags		= GPIOKPF_LEVEL_TRIGGERED_IRQ | GPIOKPF_DRIVE_INACTIVE | GPIOKPF_PRINT_UNMAPPED_KEYS
+#if 1 // chenjun
+	.flags		= GPIOKPF_LEVEL_TRIGGERED_IRQ | GPIOKPF_DRIVE_INACTIVE |
+			  GPIOKPF_PRINT_UNMAPPED_KEYS
 #else
 	.flags		= GPIOKPF_LEVEL_TRIGGERED_IRQ | GPIOKPF_DRIVE_INACTIVE | GPIOKPF_ACTIVE_HIGH | GPIOKPF_PRINT_UNMAPPED_KEYS /*| GPIOKPF_PRINT_MAPPED_KEYS*/
 #endif
 };
 
-static struct gpio_event_info *skate_keypad_info[] = {
-	&skate_keypad_matrix_info.info
+static struct gpio_event_info *mooncake_keypad_info[] = {
+	&mooncake_keypad_matrix_info.info
 };
 
-static struct gpio_event_platform_data skate_keypad_data = {
-	.name		= "skate_keypad",
-	.info		= skate_keypad_info,
-	.info_count	= ARRAY_SIZE(skate_keypad_info)
+static struct gpio_event_platform_data mooncake_keypad_data = {
+	.name		= "blade_keypad",  
+	.info		= mooncake_keypad_info,
+	.info_count	= ARRAY_SIZE(mooncake_keypad_info)
 };
 
-struct platform_device keypad_device_skate = {
+struct platform_device keypad_device_mooncake = {
 	.name	= GPIO_EVENT_DEV_NAME,
 	.id	= -1,
 	.dev	= {
-		.platform_data	= &skate_keypad_data,
+		.platform_data	= &mooncake_keypad_data,
 	},
 };
 
 #ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 extern int zte_get_ftm_flag(void);
 #endif
-static int __init skate_init_keypad(void)
+
+static int __init mooncake_init_keypad(void)
 {
+        
 	#ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 	int ftm_flag;
 	ftm_flag = zte_get_ftm_flag();
 	if (1 ==ftm_flag)return 0;
 	#endif
-	skate_keypad_matrix_info.keymap = keypad_keymap_skate;
+        
+	mooncake_keypad_matrix_info.keymap = keypad_keymap_mooncake;
 #ifdef CONFIG_MSM_GPIO_WAKE
-	p_keypad_keymap = skate_keypad_matrix_info.keymap;	
+	p_keypad_keymap = mooncake_keypad_matrix_info.keymap;	
 #endif
-	return platform_device_register(&keypad_device_skate);
+	return platform_device_register(&keypad_device_mooncake);
 }
 
-device_initcall(skate_init_keypad);
+device_initcall(mooncake_init_keypad);
 

@@ -14,6 +14,31 @@
  *
  */
 
+/* ========================================================================================
+when         who        what, where, why                             comment tag
+--------     ----       -----------------------------                ----------------------
+2011-03-01   wt         add motor power supply for blade n880        ZTE_CAM_WT20110301
+2011-01-19   wly        change touch voltage sequence                ZTE_WLY_CRDB00603771
+2010-12-07   qxx        compatible of qualcomm and broadcomm bluetooth chip     ZTE_BT_QXX_20101207
+2010-11-08   wangzy     add AT and Single ADB interface                    ZTE_USB_WZY_101021
+2010-11-02   jia.jia    remove config of VCM which is set by AVDD    ZTE_CAMERA_JIA_20101102
+                        according to hardware design
+2010-09-09   jia.jia    refactor code for msm_camera_power_backend   ZTE_CAMERA_JIA_20100909
+                        and msm_camera_power_frontend;
+2010-09-03   huangyj    change base phy address,                     ZTE_BOOT_HUANGYANJUN_20100903_01
+2010-09-02   jia.jia    set DVDD as 1.8V due to design of LDO in     ZTE_CAMERA_JIA_001
+                        camera module which is set DVDD as 1.5V
+                        for both 5.0Mp and 3.0Mp camera
+                        set IOVDD as 2.6V for both 5.0Mp and 3.0Mp
+                        camera
+2010-08-19   jia.jia    add CONFIG_SENSOR_ADAPTER for MT9T112-3.0Mp  ZTE_CAMERA_JIA_001
+                        -AF-FPC and OV5642-5.0Mp-AF-FPC
+2010-08-17   jia.jia    set AVDD, DVDD, and VCM for back-end camera  ZTE_CAMERA_JIA_001
+                        according to different board type
+2010-08-16   huangyj add mooncake board boot config         ZTE_BOOT_HUANGYJ_20100816_01
+2010-07-09   qxx        bluetooth gpio and voltage modify            ZTE_BT_QXX_20100709
+2010-08-04   yym        add f3 log support                           ZTE_F3LOG_YYM_20100804
+==========================================================================================*/
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
@@ -50,11 +75,12 @@
 #include <mach/msm_battery.h>
 #include <mach/rpc_server_handset.h>
 
-
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
 #include <linux/i2c.h>
+
 #include <linux/i2c-gpio.h> 
+
 #include <linux/android_pmem.h>
 #include <mach/camera.h>
 #include <linux/proc_fs.h>
@@ -74,7 +100,10 @@
 #ifdef CONFIG_ZTE_PLATFORM
 //#include "msm_usb_config.h" //USB-HML-001
 #endif
+
 #include <linux/lis302dl.h>
+
+
 #if defined( CONFIG_TOUCHSCREEN_MSM_LEGACY)
 #include <mach/msm_touch.h>
 #elif defined( CONFIG_TOUCHSCREEN_MSM)
@@ -108,15 +137,17 @@ extern struct atmel_i2c_platform_data atmel_data;
 #endif
 
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
-#define MSM_RAM_CONSOLE_PHYS  0x02500000
+#define MSM_RAM_CONSOLE_PHYS  0x02500000 
 #define MSM_RAM_CONSOLE_SIZE  SZ_1M
 #endif
 
 static smem_global *global;
 
+
 #ifdef CONFIG_ZTE_PLATFORM
 static int g_zte_ftm_flag_fixup;
 #endif
+
 
 /* Using upper 1/2MB of Apps Bootloader memory*/
 #define MSM_PMEM_AUDIO_START_ADDR	0x80000ul
@@ -153,9 +184,9 @@ static struct platform_device mass_storage_device = {
 	},
 };
 #endif
-
 #if 0
 #ifdef CONFIG_USB_ANDROID
+//ruanmeisi 20100713 zte pid
 #define PRODUCT_ID_ALL_INTERFACE          0x1350
 #define PRODUCT_ID_MS_ADB                      0x1351
 #define PRODUCT_ID_ADB                             0x1352
@@ -168,10 +199,17 @@ static struct platform_device mass_storage_device = {
 #define PRODUCT_ID_RNDIS_MS                 0x1364
 #define PRODUCT_ID_RNDIS_MS_ADB             0x1364
 #define PRODUCT_ID_RNDIS             0x1365
+
 #define PRODUCT_ID_DIAG_MODEM_NEMA_MS_AT             0x1367
 #define PRODUCT_ID_DIAG_MODEM_NEMA_MS_ADB_AT             0x1366
 #define PRODUCT_ID_RNDIS_ADB             0x1373
 /* dynamic composition */
+// ruanmeisi for dell
+//end
+
+//for PIDs without ZTE vendor tag
+
+
 static struct usb_composition usb_func_composition[] = {
 #ifdef 	CONFIG_ZTE_PLATFORM	
 	{
@@ -183,7 +221,7 @@ static struct usb_composition usb_func_composition[] = {
 	},
 	{
 		/* ADB*/
-		.product_id         = PRODUCT_ID_ADB,
+		.product_id         = PRODUCT_ID_ADB,  
 		.functions	    = 0x01,
 		.adb_product_id     = PRODUCT_ID_ADB,
 		.adb_functions	    = 0x01
@@ -244,6 +282,7 @@ static struct usb_composition usb_func_composition[] = {
 		.adb_product_id     = PRODUCT_ID_RNDIS_ADB,
 		.adb_functions	    = 0x1A
 	},
+	
 	{
 		/* diag+modm+nema+ms+at*/
 		.product_id         = PRODUCT_ID_DIAG_MODEM_NEMA_MS_AT,
@@ -258,6 +297,21 @@ static struct usb_composition usb_func_composition[] = {
 		.adb_product_id     = PRODUCT_ID_DIAG_MODEM_NEMA_MS_ADB_AT,
 		.adb_functions	    = 0xB12764
 	},
+
+	//for dell ruanmeisi_20110110
+
+		/* modem + ms + adb */
+
+		/* MSC */
+
+		/* diag + modem + nmea + ms + adb*/
+	//end ruanmeisi_20100110
+
+	//for PIDs without ZTE vendor tag	
+		/* ms+adb*/
+		/* diag+modm+nema+ms*/
+		/* modm+ms+adb*/
+
 
 #else
 	{
@@ -457,14 +511,12 @@ static struct msm_hsusb_platform_data msm_hsusb_pdata = {
 
 #endif 
 #endif
-
 static struct platform_device smc91x_device = {
 	.name		= "smc91x",
 	.id		= 0,
 	.num_resources	= ARRAY_SIZE(smc91x_resources),
 	.resource	= smc91x_resources,
 };
-
 #ifdef CONFIG_USB_ANDROID
 #if 0
 static char *usb_functions_default[] = {
@@ -474,7 +526,6 @@ static char *usb_functions_default[] = {
 	"rmnet",
 	"usb_mass_storage",
 };
-
 static char *usb_functions_default_adb[] = {
 	"diag",
 	"adb",
@@ -483,19 +534,16 @@ static char *usb_functions_default_adb[] = {
 	"rmnet",
 	"usb_mass_storage",
 };
-
 static char *usb_functions_rndis_diag[] = {
 	"rndis",
 	"diag",
 };
-
 static char *usb_functions_rndis_adb_diag[] = {
 	"rndis",
 	"adb",
 	"diag",
 };
 #endif
-
 static char *usb_functions_all[] = {
 #ifdef CONFIG_USB_ANDROID_RNDIS
 	"rndis",
@@ -519,8 +567,6 @@ static char *usb_functions_all[] = {
 	"at"
 #endif
 };
-
-
 #if 0
 static struct android_usb_product usb_products[] = {
 	{
@@ -545,18 +591,14 @@ static struct android_usb_product usb_products[] = {
 	},
 };
 #else
-
 #include "zte_usb_config.c"
-
 #endif
-
 static struct usb_mass_storage_platform_data mass_storage_pdata = {
 	.nluns		= 1,
 	.vendor		= "ZTE Incorporated",
 	.product        = "Mass storage",
 	.release	= 0x0100,
 };
-
 static struct platform_device usb_mass_storage_device = {
 	.name	= "usb_mass_storage",
 	.id	= -1,
@@ -564,10 +606,8 @@ static struct platform_device usb_mass_storage_device = {
 		.platform_data = &mass_storage_pdata,
 	},
 };
-
 #if 0
 static struct usb_ether_platform_data rndis_pdata = {
-	/* ethaddr is filled by board_serialno_setup */
 	.vendorID	= 0x05C6,
 	.vendorDescr	= "Qualcomm Incorporated",
 };
@@ -579,7 +619,6 @@ static struct platform_device rndis_device = {
 		.platform_data = &rndis_pdata,
 	},
 };
-
 #if 0
 static struct android_usb_platform_data android_usb_pdata = {
 	.vendor_id	= 0x05C6,
@@ -627,31 +666,22 @@ static int msm_hsusb_ldo_init(int init)
 
 	return 0;
 }
-
 static int msm_hsusb_ldo_enable(int enable)
 {
 	static int ldo_status;
-
 	if (!vreg_3p3 || IS_ERR(vreg_3p3))
 		return -ENODEV;
-
 	if (ldo_status == enable)
 		return 0;
-
 	ldo_status = enable;
-
 	pr_info("%s: %d", __func__, enable);
-
 	if (enable)
 		return vreg_enable(vreg_3p3);
-
 	return vreg_disable(vreg_3p3);
 }
-
 static int msm_hsusb_pmic_notif_init(void (*callback)(int online), int init)
 {
 	int ret;
-
 	if (init) {
 		ret = msm_pm_app_rpc_init(callback);
 	} else {
@@ -660,7 +690,6 @@ static int msm_hsusb_pmic_notif_init(void (*callback)(int online), int init)
 	}
 	return ret;
 }
-
 #ifdef 	CONFIG_ZTE_PLATFORM
 static int msm_hsusb_rpc_phy_reset(void __iomem *addr)
 {
@@ -682,13 +711,13 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.ldo_init		= msm_hsusb_ldo_init,
 	.ldo_enable		= msm_hsusb_ldo_enable,
 	.pclk_required_during_lpm = 1
-
 };
 
 #ifdef CONFIG_USB_GADGET
 //static struct msm_hsusb_gadget_platform_data msm_gadget_pdata;
 #endif
 #endif
+
 
 #define SND(desc, num) { .name = #desc, .id = num }
 static struct snd_endpoint snd_endpoints_list[] = {
@@ -706,6 +735,7 @@ static struct snd_endpoint snd_endpoints_list[] = {
 	SND(CURRENT, 28),
 };
 #undef SND
+
 
 static struct msm_snd_endpoints msm_device_snd_endpoints = {
 	.endpoints = snd_endpoints_list,
@@ -895,6 +925,7 @@ static struct platform_device hs_device = {
 #define LCDC_API_PROG             0x30000066
 #define LCDC_API_VERS             0x00010001
 
+
 #ifdef CONFIG_ZTE_PLATFORM 
 //lcd reset & spi 
 #define GPIO_LCD_RESET_OUT 	    91
@@ -940,6 +971,7 @@ static int msm_fb_lcdc_config(int on)
 	msm_rpc_close(lcdc_ep);
 	return rc;
 }
+
 
 #ifdef CONFIG_ZTE_PLATFORM 
 static int gpio_array_num[] = {
@@ -1016,6 +1048,7 @@ static void config_lcdc_gpio_table(uint32_t *table, int len, unsigned enable)
 	}
 }
 
+
 #ifdef CONFIG_ZTE_PLATFORM
 static void lcdc_lead_config_gpios(int enable)
 #else
@@ -1088,6 +1121,7 @@ static struct lcdc_platform_data lcdc_pdata = {
 	.lcdc_power_save   = msm_fb_lcdc_power_save,
 };
 
+
 #ifdef CONFIG_ZTE_PLATFORM
 static struct msm_panel_common_pdata lcdc_qvga_panel_data = {
 	.panel_config_gpio = lcdc_lead_config_gpios,
@@ -1156,9 +1190,11 @@ static struct platform_device msm_bt_power_device = {
 	.name = "bt_power",
 };
 
+//compatible of qualcomm and broadcomm bluetooth chip     ZTE_BT_QXX_20101207 begin
 static struct platform_device msm_bcm_power_device = {
 	.name = "bcm_power",
 };
+//compatible of qualcomm and broadcomm bluetooth chip     ZTE_BT_QXX_20101207 end
 
 enum {
 	BT_WAKE,
@@ -1174,7 +1210,7 @@ enum {
 };
 
 static unsigned bt_config_power_on[] = {
-	GPIO_CFG(90, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA),	/* WAKE*/
+	GPIO_CFG(90, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA),	/* WAKE ZTE_BT_QXX_20100709*/
 	GPIO_CFG(43, 2, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA),	/* RFR */
 	GPIO_CFG(44, 2, GPIO_INPUT,  GPIO_NO_PULL, GPIO_2MA),	/* CTS */
 	GPIO_CFG(45, 2, GPIO_INPUT,  GPIO_NO_PULL, GPIO_2MA),	/* Rx */
@@ -1186,7 +1222,7 @@ static unsigned bt_config_power_on[] = {
 	GPIO_CFG(83, 0, GPIO_INPUT,  GPIO_NO_PULL, GPIO_2MA),	/* HOST_WAKE */
 };
 static unsigned bt_config_power_off[] = {
-	GPIO_CFG(90, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA),	/* WAKE */
+	GPIO_CFG(90, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA),	/* WAKE */ // ZTE_BT_QXX_20100709: 42 to 90
 	GPIO_CFG(43, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA),	/* RFR */
 	GPIO_CFG(44, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA),	/* CTS */
 	GPIO_CFG(45, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA),	/* Rx */
@@ -1228,7 +1264,7 @@ static int bluetooth_power(int on)
 		}
 
 		/* units of mV, steps of 50 mV */
-		rc = vreg_set_level(vreg_bt, 1800);
+		rc = vreg_set_level(vreg_bt, 1800); 
 		if (rc) {
 			printk(KERN_ERR "%s: vreg set level failed (%d)\n",
 			       __func__, rc);
@@ -1240,6 +1276,7 @@ static int bluetooth_power(int on)
 			       __func__, rc);
 			return -EIO;
 		}
+		
 		rc = gpio_request(20, "bt_reset");
 		if(!rc)
 		{
@@ -1250,6 +1287,7 @@ static int bluetooth_power(int on)
 			printk(KERN_ERR "gpio_request: %d failed!\n", 20);
 		}
 		gpio_free(20);		
+		
 	} else {
 		rc = vreg_disable(vreg_bt);
 		if (rc) {
@@ -1267,6 +1305,7 @@ static int bluetooth_power(int on)
 				return -EIO;
 			}
 		}
+		
     rc = gpio_request(20, "bt_reset");
     if(!rc)
     {
@@ -1277,21 +1316,23 @@ static int bluetooth_power(int on)
         printk(KERN_ERR "gpio_request: %d failed!\n", 20);
     }
     gpio_free(20);
+		
 	}
 	return 0;
 }
 
+//compatible of qualcomm and broadcomm bluetooth chip     ZTE_BT_QXX_20101207 begin
 static int bcm_power(int on)
 {
  //  struct vreg *vreg_bt;
-   int pin, rc;
+	int pin, rc;
 
-   printk(KERN_DEBUG "%s\n", __func__);
+	printk(KERN_DEBUG "%s\n", __func__);
 
-   if (on) {
-   for (pin = 0; pin < ARRAY_SIZE(bt_config_power_on); pin++) {
-   rc = gpio_tlmm_config(bt_config_power_on[pin],
-				      GPIO_ENABLE);
+	if (on) {
+		for (pin = 0; pin < ARRAY_SIZE(bt_config_power_on); pin++) {
+			rc = gpio_tlmm_config(bt_config_power_on[pin],
+					      GPIO_ENABLE);
 			if (rc) {
 				printk(KERN_ERR
 				       "%s: gpio_tlmm_config(%#x)=%d\n",
@@ -1300,6 +1341,7 @@ static int bcm_power(int on)
 			}
 		}
 
+		
 		rc = gpio_request(20, "bt_reset");
 		if(!rc)
 		{
@@ -1313,6 +1355,7 @@ static int bcm_power(int on)
 			printk(KERN_ERR "gpio_request: %d failed!\n", 20);
 		}
 		gpio_free(20);		
+		
 	} else {
 	
 		for (pin = 0; pin < ARRAY_SIZE(bt_config_power_off); pin++) {
@@ -1325,6 +1368,7 @@ static int bcm_power(int on)
 				return -EIO;
 			}
 		}
+		
     rc = gpio_request(20, "bt_reset");
     if(!rc)
     {
@@ -1335,14 +1379,16 @@ static int bcm_power(int on)
         printk(KERN_ERR "gpio_request: %d failed!\n", 20);
     }
     gpio_free(20);
+		
 	}
 	return 0;
 }
+//compatible of qualcomm and broadcomm bluetooth chip     ZTE_BT_QXX_20101207 end
 
 static void __init bt_power_init(void)
 {
 	msm_bt_power_device.dev.platform_data = &bluetooth_power;
-	msm_bcm_power_device.dev.platform_data = &bcm_power;  
+	msm_bcm_power_device.dev.platform_data = &bcm_power;   //compatible of qualcomm and broadcomm bluetooth chip     ZTE_BT_QXX_20101207
 }
 #else
 #define bt_power_init(x) do {} while (0)
@@ -1382,6 +1428,7 @@ static struct platform_device msm_device_pmic_leds = {
 	.id = -1,
 };
 
+
 static struct gpio_led android_led_list[] = {
 	{
 		.name = "button-backlight",
@@ -1402,6 +1449,7 @@ static struct platform_device android_leds = {
 	},
 };
 
+
 static struct resource bluesleep_resources[] = {
 	{
 		.name	= "gpio_host_wake",
@@ -1412,7 +1460,7 @@ static struct resource bluesleep_resources[] = {
 	{
 		.name	= "gpio_ext_wake",
 		.start	= 90,   
-		.end	= 90,   
+		.end	= 90,     
 		.flags	= IORESOURCE_IO,
 	},
 	{
@@ -1430,19 +1478,14 @@ static struct platform_device msm_bluesleep_device = {
 	.resource	= bluesleep_resources,
 };
 
+//compatible of qualcomm and broadcomm bluetooth chip     ZTE_BT_QXX_20101207 begin
 static struct platform_device msm_bcmsleep_device = {
 	.name = "bcmsleep",
 	.id		= -1,
 	.num_resources	= ARRAY_SIZE(bluesleep_resources),
 	.resource	= bluesleep_resources,
 };
-
-static struct lis302dl_platform_data gsensor = {
-	.gpio_intr1 =  84,
-	.gpio_intr2 =  85,
-	.scale      =  2 ,
-	.int_active_low = 1,
-};
+//compatible of qualcomm and broadcomm bluetooth chip     ZTE_BT_QXX_20101207 end
 #ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
 #define SYNAPTICS_I2C_RMI4_NAME "synaptics-rmi4-ts"
 #define TS_I2C_ADDR		0x22
@@ -1463,36 +1506,25 @@ static int touchscreen_power(int on)
 		pr_err("touchscreen_power,gpio request error!\n");
 		ret=-EIO;
 	}
-
 	gpio_free(GPIO_TOUCH_EN);
-
 	return ret;
 }
-
 static struct synaptics_rmi4_data synaptics_ts_data = {
 	.orientation	= 0,	// ROTATION_0 = 0,ROTATION_90 = 1, ROTATION_180 = 2, ROTATION_270 = 3
 	.power	= touchscreen_power,
 	.gpio_irq = 29,
 };
-
 #endif
-
-
 static struct i2c_board_info i2c_devices[] = {
-#ifdef CONFIG_SENSORS_AKM8962
-	{		
-		I2C_BOARD_INFO("akm8962", 0x0C),	  
+#ifdef CONFIG_MSENSORS_FROM_AUXI2C_TO_I2C   
+	{
+		I2C_BOARD_INFO("akm8962",0x0c),
 	},
 #endif
-#ifdef CONFIG_SENSOR_ADXL34X	
-	{	.type = "adxl34x", 	
-		.addr = 0x53,	
-	},
-#endif
-#ifdef CONFIG_SENSOR_LIS302DL
-	{	.type = "lis302dl", 	
-		.addr = 0x1c,
-		.platform_data = &gsensor,
+#ifdef CONFIG_GSENSORS_FROM_AUXI2C_TO_I2C  
+	{
+		.type = "accelerator", 
+		.addr = 0x1d,
 	},
 #endif
 #ifdef CONFIG_MT9D112
@@ -1527,6 +1559,15 @@ static struct i2c_board_info i2c_devices[] = {
 #endif
 
 #ifdef CONFIG_MT9P111
+    /*
+     * Commented by zhang.shengjie
+     *
+     * Refer to drivers/media/video/msm/mt9p111.c
+     * For MT9P111: 5.0Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     *
+     * Attention: I2C device is initialized in sensor's driver if "CONFIG_SENSOR_ADAPTER"
+     *            is defined
+     */
 #if !defined(CONFIG_SENSOR_ADAPTER)
     {
         I2C_BOARD_INFO("mt9p111", 0x7A >> 1),
@@ -1537,6 +1578,16 @@ static struct i2c_board_info i2c_devices[] = {
 #endif
 
 #ifdef CONFIG_MT9T11X
+    /*
+     * Commented by zhang.shengjie, ZTE_MSM_CAMERA_ZHSHJ_001
+     *
+     * Refer to drivers/media/video/msm/mt9t11x.c
+     * For MT9T111: 3.1Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     * For MT9T112: 3.1Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     *
+     * Attention: I2C device is initialized in sensor's driver if "CONFIG_SENSOR_ADAPTER"
+     *            is defined
+     */
 #if !defined(CONFIG_SENSOR_ADAPTER)
     {
         I2C_BOARD_INFO("mt9t11x", 0x7A >> 1),
@@ -1547,18 +1598,36 @@ static struct i2c_board_info i2c_devices[] = {
 #endif
 
 #ifdef CONFIG_MT9D115
+    /*
+     * add by ZTE_CAMERA_LIJING_20100629 for MT9D115-2.0Mp-FF-Socket
+     */
     {
         I2C_BOARD_INFO("mt9d115", 0x78 >> 1),
     },
 #endif
 
 #ifdef CONFIG_MT9V113
+    /*
+     * Commented by zhang.shengjie
+     *
+     * Refer to drivers/media/video/msm/mt9v113.c
+     * For MT9V113: 0.3Mp, 1/11-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     */
     {
         I2C_BOARD_INFO("mt9v113", 0x78 >> 1),
     },
 #endif
 
 #ifdef CONFIG_OV5642
+    /*
+     * Commented by zhang.shengjie
+     *
+     * Refer to drivers/media/video/msm/ov5642.c
+     * For OV5642: 5.0Mp, 1/11-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     *
+     * Attention: I2C device is initialized in sensor's driver if "CONFIG_SENSOR_ADAPTER"
+     *            is defined
+     */
 #if !defined(CONFIG_SENSOR_ADAPTER)
     {
         I2C_BOARD_INFO("ov5642", 0x78 >> 1),
@@ -1568,19 +1637,11 @@ static struct i2c_board_info i2c_devices[] = {
 #endif
 #endif
 
-#ifdef CONFIG_OV5640
-#if !defined(CONFIG_SENSOR_ADAPTER)
-    {
-        I2C_BOARD_INFO("ov5640", 0x78 >> 1),
-    },
-#else
-    //Do nothing
-#endif
-#endif
 
 #ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_3K
 {
 		I2C_BOARD_INFO(SYNAPTICS_I2C_RMI4_NAME, TS_I2C_ADDR ),
+		/*.flags        = ,*/
 		.irq = MSM_GPIO_TO_INT(GPIO_TS_IRQ),
 		//.platform_data = touchscreen_power,
 		.platform_data = &synaptics_ts_data,
@@ -1594,14 +1655,15 @@ static struct i2c_board_info i2c_devices[] = {
 		.irq          = MSM_GPIO_TO_INT(29),
 	},
 	#endif
-#ifdef CONFIG_TOUCHSCREEN_FOCALTECH_NEW
+	
+	#ifdef CONFIG_TOUCHSCREEN_FOCALTECH
 	{
 		.type         = "ft5x0x_ts",
 		/*.flags        = ,*/
-		.addr         = 0x3E,
+		.addr         = 0x3E, 
 		.irq          = MSM_GPIO_TO_INT(29),
 	},
-#endif
+	#endif
 #ifdef CONFIG_TOUCHSCREEN_MXT224
 	{
 		I2C_BOARD_INFO(ATMEL_QT602240_NAME, 0x4a ),
@@ -1610,6 +1672,7 @@ static struct i2c_board_info i2c_devices[] = {
 	},
 #endif
 };
+
 
 static struct i2c_gpio_platform_data aux_i2c_gpio_data = {
 	.sda_pin		= 93,
@@ -1626,6 +1689,9 @@ static struct platform_device aux_i2c_gpio_device = {
 		.platform_data	= &aux_i2c_gpio_data
 	},
 };
+
+
+
 static struct i2c_gpio_platform_data aux2_i2c_gpio_data = {
 	.sda_pin		= 109,
 	.scl_pin		= 107,
@@ -1641,9 +1707,21 @@ static struct platform_device aux2_i2c_gpio_device = {
 		.platform_data	= &aux2_i2c_gpio_data
 	},
 };
+
 #ifdef CONFIG_MSM_CAMERA
 static uint32_t camera_off_gpio_table[] = {
 	/* parallel CAMERA interfaces */
+    /*
+     * Commented by zh.shj
+     *
+     * Refer to drivers/media/video/msm/mt9v113.c
+     * For MT9V113: 0.3Mp, 1/11-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     *
+     * Refer to drivers/media/video/msm/mt9p111.c
+     * For MT9P111: 5.0Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     *
+     * GPIO: 0, 1, 2, and 3 are configured as "CAM30_PWRDN", "CAM500_PWRDN", "CAM500_RST", and "FM_RST"
+     */  
 #if 0 
     GPIO_CFG(0,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT0 */
     GPIO_CFG(1,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT1 */
@@ -1679,6 +1757,17 @@ static uint32_t camera_off_gpio_table[] = {
 
 static uint32_t camera_on_gpio_table[] = {
 	/* parallel CAMERA interfaces */
+    /*
+     * Commented by zh.shj
+     *
+     * Refer to drivers/media/video/msm/mt9v113.c
+     * For MT9V113: 0.3Mp, 1/11-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     *
+     * Refer to drivers/media/video/msm/mt9p111.c
+     * For MT9P111: 5.0Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     *
+     * GPIO: 0, 1, 2, and 3 are configured as "CAM30_PWRDN", "CAM500_PWRDN", "CAM500_RST", and "FM_RST"
+     */   
 #if 0
     GPIO_CFG(0,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT0 */
     GPIO_CFG(1,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT1 */
@@ -1786,7 +1875,6 @@ static void config_camera_on_gpios(void)
 
 	config_gpio_table(camera_on_gpio_table,
 		ARRAY_SIZE(camera_on_gpio_table));
-	//return 0;
 }
 
 static void config_camera_off_gpios(void)
@@ -1801,14 +1889,220 @@ static void config_camera_off_gpios(void)
 		ARRAY_SIZE(camera_off_gpio_table));
 }
 
+/*
+ * Commented by zh.shj, ZTE_MSM_CAMERA_ZHSHJ_001
+ *
+ * Camera power setting for backend sensor, i.e., MT9T111/MT9T112/OV5642
+ * For MT9T111: 3.1Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+ * For MT9T112: 3.1Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+ */
 #define MSM_CAMERA_POWER_BACKEND_DVDD_VAL       (1800)
-#define MSM_CAMERA_POWER_BACKEND_IOVDD_VAL      (2600)
 #define MSM_CAMERA_POWER_BACKEND_AVDD_VAL       (2800)
+
+
+//add n880 config judgment ZTE_CAM_WT20110301
+#if defined (CONFIG_CAMERA_N880)
+#define MSM_CAMERA_POWER_BACKEND_IOVDD_VAL      (1800)
 int32_t msm_camera_power_backend(enum msm_camera_pwr_mode_t pwr_mode)
 {
     struct vreg *vreg_cam_dvdd  = NULL;
     struct vreg *vreg_cam_avdd  = NULL;
     struct vreg *vreg_cam_iovdd = NULL;
+    struct vreg *vreg_cam_motor = NULL;
+    int32_t rc_cam_dvdd;
+    int32_t rc_cam_avdd;
+    int32_t rc_cam_iovdd;
+    int32_t rc_cam_motor;
+    CDBG("%s: entry\n", __func__);
+
+    /*
+      * Power-up Sequence according to datasheet of sensor:
+      *
+      * VREG_CAM_DVDD1V8  = VREG_GP2
+      * VREG_CAM_IOVDD2V8 = VREG_MSMP
+      * VREG_CAM_AVDD2V6  = VREG_GP3
+      */
+    vreg_cam_dvdd  =  vreg_get(0, "gp2");
+  	vreg_cam_iovdd =  vreg_get(0, "gp4");
+    vreg_cam_avdd  =  vreg_get(0, "gp3");
+    vreg_cam_motor =  vreg_get(0, "gp6");
+    
+    if ((!vreg_cam_dvdd) || (!vreg_cam_iovdd) || (!vreg_cam_avdd) || (!vreg_cam_motor))
+    {
+        CCRT("%s: vreg_get failed!\n", __func__);
+        return -EIO;
+    }
+    switch (pwr_mode)
+    {
+        case MSM_CAMERA_PWRUP_MODE:
+        {
+            /* DVDD for both 5.0Mp and 3.0Mp camera on board-blade */
+            rc_cam_dvdd = vreg_set_level(vreg_cam_dvdd, MSM_CAMERA_POWER_BACKEND_DVDD_VAL);
+            if (rc_cam_dvdd)
+            {
+                CCRT("%s: vreg_set_level failed!\n", __func__);
+                return -EIO;
+            }
+
+            rc_cam_dvdd = vreg_enable(vreg_cam_dvdd);
+            if (rc_cam_dvdd)
+            {
+                CCRT("%s: vreg_enable failed!\n", __func__);
+                return -EIO;
+            }
+
+            mdelay(1);
+
+            rc_cam_iovdd = vreg_set_level(vreg_cam_iovdd, MSM_CAMERA_POWER_BACKEND_IOVDD_VAL);
+            if (rc_cam_iovdd)
+            {
+                CCRT("%s: vreg_set_level failed!\n", __func__);
+                return -EIO;
+            }
+
+            rc_cam_iovdd = vreg_enable(vreg_cam_iovdd);
+            if (rc_cam_iovdd)
+            {
+                CCRT("%s: vreg_enable failed!\n", __func__);
+                return -EIO;
+            }
+
+            mdelay(2);
+
+            /*
+               * AVDD for both 5.0Mp and 3.0Mp camera on board-blade
+               * AVDD and VCM are connected together on board-blade
+               */
+            rc_cam_avdd = vreg_set_level(vreg_cam_avdd, MSM_CAMERA_POWER_BACKEND_AVDD_VAL);
+            if (rc_cam_avdd)
+            {
+                CCRT("%s: vreg_set_level failed!\n", __func__);
+                return -EIO;
+            }
+
+            rc_cam_avdd = vreg_enable(vreg_cam_avdd);
+            if (rc_cam_avdd)
+            {
+                CCRT("%s: vreg_enable failed!\n", __func__);
+                return -EIO;
+            }
+
+
+            rc_cam_motor = vreg_set_level(vreg_cam_motor, MSM_CAMERA_POWER_BACKEND_AVDD_VAL);
+            if (rc_cam_motor)
+            {
+                CCRT("%s: vreg_set_level failed!\n", __func__);
+                return -EIO;
+            }
+
+            rc_cam_motor = vreg_enable(vreg_cam_motor);
+            if (rc_cam_avdd)
+            {
+                CCRT("%s: vreg_enable failed!\n", __func__);
+                return -EIO;
+            }
+
+            mdelay(500);
+
+            break;
+        }
+        
+        case MSM_CAMERA_STANDBY_MODE:
+        {
+            rc_cam_avdd  = vreg_disable(vreg_cam_avdd);
+            if (rc_cam_avdd)
+            {
+                CCRT("%s: vreg_disable failed!\n", __func__);
+                return -EIO;
+            }
+      
+            rc_cam_motor  = vreg_disable(vreg_cam_motor);
+            if (rc_cam_motor)
+            {
+                CCRT("%s: vreg_disable failed!\n", __func__);
+                return -EIO;
+            }           
+
+            break;
+        }
+        case MSM_CAMERA_NORMAL_MODE:
+        {
+            /*
+               * AVDD and VCM are connected together on board-blade
+               */
+            rc_cam_avdd = vreg_set_level(vreg_cam_avdd, MSM_CAMERA_POWER_BACKEND_AVDD_VAL);
+            if (rc_cam_avdd)
+            {
+                CCRT("%s: vreg_set_level failed!\n", __func__);
+                return -EIO;
+            }
+
+            rc_cam_avdd = vreg_enable(vreg_cam_avdd);
+            if (rc_cam_avdd)
+            {
+                CCRT("%s: vreg_enable failed!\n", __func__);
+                return -EIO;
+            }
+            
+            rc_cam_motor = vreg_set_level(vreg_cam_motor, MSM_CAMERA_POWER_BACKEND_AVDD_VAL);
+            if (rc_cam_motor)
+            {
+                CCRT("%s: vreg_set_level failed!\n", __func__);
+                return -EIO;
+            }
+
+            rc_cam_motor = vreg_enable(vreg_cam_motor);
+            if (rc_cam_avdd)
+            {
+                CCRT("%s: vreg_enable failed!\n", __func__);
+                return -EIO;
+            }
+            
+
+            mdelay(100);
+
+            break;
+        }
+        case MSM_CAMERA_PWRDWN_MODE:
+        {
+            /*
+               * Attention: DVDD, AVDD, or MOTORVDD may be used by other devices
+               */
+            rc_cam_dvdd  = vreg_disable(vreg_cam_dvdd);
+            rc_cam_avdd  = vreg_disable(vreg_cam_avdd);
+            if ((rc_cam_dvdd) || (rc_cam_avdd))
+            {
+                CCRT("%s: vreg_disable failed!\n", __func__);
+                return -EIO;
+            }
+
+            rc_cam_motor  = vreg_disable(vreg_cam_motor);
+            if (rc_cam_motor)
+            {
+                CCRT("%s: vreg_disable failed!\n", __func__);
+                return -EIO;
+            }      
+            break;
+        }
+        default:
+        {
+            CCRT("%s: parameter not supported!\n", __func__);
+            return -EIO;
+        }
+    }
+
+    return 0;
+}
+#else
+
+#define MSM_CAMERA_POWER_BACKEND_IOVDD_VAL      (2600)
+
+int32_t msm_camera_power_backend(enum msm_camera_pwr_mode_t pwr_mode)
+{
+    struct vreg *vreg_cam_dvdd  = NULL;
+    struct vreg *vreg_cam_avdd  = NULL;
+    struct vreg *vreg_cam_iovdd = NULL;
+    
     int32_t rc_cam_dvdd, rc_cam_avdd, rc_cam_iovdd;
 
     CDBG("%s: entry\n", __func__);
@@ -1821,8 +2115,9 @@ int32_t msm_camera_power_backend(enum msm_camera_pwr_mode_t pwr_mode)
       * VREG_CAM_AVDD2V6  = VREG_GP3
       */
     vreg_cam_dvdd  = vreg_get(0, "gp2");
-    vreg_cam_iovdd = vreg_get(0, "msmp");
+	vreg_cam_iovdd = vreg_get(0, "msmp");
     vreg_cam_avdd  = vreg_get(0, "gp3");
+
     if ((!vreg_cam_dvdd) || (!vreg_cam_iovdd) || (!vreg_cam_avdd))
     {
         CCRT("%s: vreg_get failed!\n", __func__);
@@ -1896,7 +2191,6 @@ int32_t msm_camera_power_backend(enum msm_camera_pwr_mode_t pwr_mode)
                 CCRT("%s: vreg_disable failed!\n", __func__);
                 return -EIO;
             }
-
             break;
         }
         case MSM_CAMERA_NORMAL_MODE:
@@ -1917,7 +2211,6 @@ int32_t msm_camera_power_backend(enum msm_camera_pwr_mode_t pwr_mode)
                 CCRT("%s: vreg_enable failed!\n", __func__);
                 return -EIO;
             }
-
             mdelay(100);
 
             break;
@@ -1946,7 +2239,14 @@ int32_t msm_camera_power_backend(enum msm_camera_pwr_mode_t pwr_mode)
 
     return 0;
 }
+#endif
 
+/*
+ * Commented by zh.shj
+ *
+ * Camera power setting for frontend sensor, i.e., MT9V113
+ * For MT9V113: 0.3Mp, 1/11-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+ */
 #define MSM_CAMERA_POWER_FRONTEND_DVDD_VAL       (1800)
 #define MSM_CAMERA_POWER_FRONTEND_IOVDD_VAL      (2800)
 #define MSM_CAMERA_POWER_FRONTEND_AVDD_VAL       (2600)
@@ -2062,6 +2362,17 @@ int32_t msm_camera_power_frontend(enum msm_camera_pwr_mode_t pwr_mode)
     return 0;
 }
 
+/*
+ * Commented by zh.shj
+ *
+ * Camera clock switch for both frontend and backend sensors, i.e., MT9V113 and MT9P111
+ *
+ * For MT9V113: 0.3Mp, 1/11-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+ * For MT9P111: 5.0Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+ *
+ * switch_val: 0, to switch clock to frontend sensor, i.e., MT9V113, or
+ *             1, to switch clock to backend sensor, i.e., MT9P111
+ */
 int msm_camera_clk_switch(const struct msm_camera_sensor_info *data,
                                   uint32_t gpio_switch,
                                   uint32_t switch_val)
@@ -2244,9 +2555,21 @@ static struct platform_device msm_camera_sensor_vb6801 = {
 };
 #endif
 #ifdef CONFIG_MT9P111
+/*
+ * Commented by zhang.shengjie
+ *
+ * Refer to drivers/media/video/msm/mt9p111.c
+ * For MT9P111: 5.0Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+ *
+ * ".vcm_pwd" are DISUSED
+ */
 
+/* CHG_CAM_20100401
+ * Commented by chg
+ * merge 5320 for camera flash.
+ */ 
 static struct msm_camera_sensor_flash_data flash_mt9p111 = {
-	.flash_type = MSM_CAMERA_FLASH_LED,
+	.flash_type = MSM_CAMERA_FLASH_NONE,
 	.flash_src  = &msm_flash_src
 }; 
 
@@ -2269,6 +2592,20 @@ static struct platform_device msm_camera_sensor_mt9p111 = {
 #endif
 
 #ifdef CONFIG_MT9T11X
+/*
+ * Commented by zhang.shengjie, ZTE_MSM_CAMERA_ZHSHJ_001
+ *
+ * Refer to drivers/media/video/msm/mt9t11x.c
+ * For MT9T111: 3.1Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+ * For MT9T112: 3.1Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+ *
+ * ".vcm_pwd" are DISUSED
+ */
+
+/* CHG_CAM_20100401
+ * Commented by chg
+ * merge 5320 for camera flash.
+ */ 
 static struct msm_camera_sensor_flash_data flash_mt9t11x = {
 	.flash_type = MSM_CAMERA_FLASH_NONE,
 	.flash_src  = &msm_flash_src
@@ -2293,6 +2630,9 @@ static struct platform_device msm_camera_sensor_mt9t11x = {
 #endif
 
 #ifdef CONFIG_MT9D115
+/*
+ * add by ZTE_CAMERA_LIJING_20100629 for MT9D115-2.0Mp-FF-Socket
+ */
 static struct msm_camera_sensor_flash_data flash_mt9d115 = {
     .flash_type = MSM_CAMERA_FLASH_NONE,
     .flash_src  = &msm_flash_src
@@ -2317,6 +2657,17 @@ static struct platform_device msm_camera_sensor_mt9d115 = {
 #endif
 
 #ifdef CONFIG_MT9V113
+/*
+ * Commented by zhang.shengjie
+ *
+ * Refer to drivers/media/video/msm/mt9v113.c
+ * For MT9V113: 0.3Mp, 1/11-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+ */
+ 
+/* CHG_CAM_20100401
+ * Commented by chg
+ * merge 5320 for camera flash.
+ */ 
 static struct msm_camera_sensor_flash_data flash_mt9v113 = {
 	.flash_type = MSM_CAMERA_FLASH_NONE,
 	.flash_src  = &msm_flash_src
@@ -2341,6 +2692,19 @@ static struct platform_device msm_camera_sensor_mt9v113 = {
 #endif
 
 #ifdef CONFIG_OV5642
+/*
+ * Commented by zhang.shengjie
+ *
+ * Refer to drivers/media/video/msm/ov5642.c
+ * For OV5642: 5.0Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+ *
+ * ".vcm_pwd" are DISUSED
+ */
+
+/* CHG_CAM_20100401
+ * Commented by chg
+ * merge 5320 for camera flash.
+ */ 
 static struct msm_camera_sensor_flash_data flash_ov5642 = {
 	.flash_type = MSM_CAMERA_FLASH_NONE,
 	.flash_src  = &msm_flash_src
@@ -2364,33 +2728,11 @@ static struct platform_device msm_camera_sensor_ov5642 = {
 };
 #endif
 
-#ifdef CONFIG_OV5640
-static struct msm_camera_sensor_flash_data flash_ov5640 = {
-	.flash_type = MSM_CAMERA_FLASH_LED,
-	.flash_src  = &msm_flash_src
-};
- 
-static struct msm_camera_sensor_info msm_camera_sensor_ov5640_data = {
-	.sensor_name    = "ov5640",
-	.sensor_reset   = 2,
-	.sensor_pwd     = 1,
-	.vcm_pwd        = 0,
-	.vcm_enable     = 0,
-	.pdata          = &msm_camera_device_data,
-	.flash_data     = &flash_ov5640
-};
-
-static struct platform_device msm_camera_sensor_ov5640 = {
-	.name      = "msm_camera_ov5640",
-	.dev       = {
-		.platform_data = &msm_camera_sensor_ov5640_data,
-	},
-};
 #endif
 
 
-#endif
 
+/*add touchsreen size definition for mooncake.  QVGA*/
 #if defined( CONFIG_TOUCHSCREEN_MSM_LEGACY)
 struct msm_ts_platform_data msm_tssc_pdata ={
 	.x_max = 239,
@@ -2408,6 +2750,8 @@ struct msm_ts_platform_data msm_tssc_pdata = {
 	.inv_y = 955,
 };
 #endif
+
+
 
 
 #if 0
@@ -2521,6 +2865,7 @@ static struct platform_device ram_console_device = {
 	.resource       = ram_console_resource,
 };
 #endif
+
 /* ATHENV */
 static struct platform_device msm_wlan_ar6000_pm_device = {
 	.name		= "wlan_ar6000_pm_dev",
@@ -2529,6 +2874,7 @@ static struct platform_device msm_wlan_ar6000_pm_device = {
 	.resource	= NULL,
 };
 /* ATHENV */
+
 static struct platform_device *early_devices[] __initdata = {
 #ifdef CONFIG_GPIOLIB
 	&msm_gpio_devices[0],
@@ -2541,6 +2887,7 @@ static struct platform_device *early_devices[] __initdata = {
 };
 
 static struct platform_device *devices[] __initdata = {
+
 	/* ATHENV */
     /* 
      * It is necessary to put here in order to support WoW.
@@ -2548,6 +2895,7 @@ static struct platform_device *devices[] __initdata = {
      */
 	&msm_wlan_ar6000_pm_device,
 /* ATHENV */
+
 #if !defined(CONFIG_MSM_SERIAL_DEBUGGER)
 	&msm_device_uart3,
 #endif
@@ -2575,14 +2923,19 @@ static struct platform_device *devices[] __initdata = {
 #endif
 	&android_usb_device,
 #endif
-
 	&msm_device_i2c,
+
 	&aux_i2c_gpio_device,  
+
+
 	&aux2_i2c_gpio_device,  
+
 	&smc91x_device,
+
 #if defined( CONFIG_TOUCHSCREEN_MSM_LEGACY) || defined( CONFIG_TOUCHSCREEN_MSM)
 	&msm_device_tssc,
 #endif
+	
 	&android_pmem_kernel_ebi1_device,
 	&android_pmem_device,
 	&android_pmem_adsp_device,
@@ -2596,7 +2949,7 @@ static struct platform_device *devices[] __initdata = {
 	&msm_device_uart_dm1,
 #ifdef CONFIG_BT
 	&msm_bt_power_device,
-	&msm_bcm_power_device,  
+	&msm_bcm_power_device,  //compatible of qualcomm and broadcomm bluetooth chip     ZTE_BT_QXX_20101207
 #endif
 	&msm_device_pmic_leds,
 	&android_leds, //button-backlight
@@ -2621,32 +2974,56 @@ static struct platform_device *devices[] __initdata = {
 	&msm_camera_sensor_vb6801,
 #endif
 	&msm_bluesleep_device,
-	&msm_bcmsleep_device,     
+	&msm_bcmsleep_device,     //compatible of qualcomm and broadcomm bluetooth chip     ZTE_BT_QXX_20101207
 #ifdef CONFIG_ARCH_MSM7X27
-	&msm_device_kgsl,	
+	&msm_device_kgsl,
 #endif
 #ifdef CONFIG_MT9P111
+    /*
+     * Commented by zh.shj
+     *
+     * Refer to drivers/media/video/msm/mt9p111.c
+     * For MT9P111: 5.0Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     */
     &msm_camera_sensor_mt9p111,
 #endif
 
 #ifdef CONFIG_MT9T11X
+    /*
+     * Commented by zh.shj, ZTE_MSM_CAMERA_ZHSHJ_001
+     *
+     * Refer to drivers/media/video/msm/mt9t11x.c
+     * For MT9T111: 3.1Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     * For MT9T112: 3.1Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     */
     &msm_camera_sensor_mt9t11x,
 #endif
 
 #ifdef CONFIG_MT9D115
+    /*
+     * add by ZTE_CAMERA_LIJING_20100629 for MT9D115-2.0Mp-FF-Socket
+     */
     &msm_camera_sensor_mt9d115,
 #endif
 
 #ifdef CONFIG_MT9V113
+    /*
+     * Commented by zh.shj
+     *
+     * Refer to drivers/media/video/msm/mt9v113.c
+     * For MT9V113: 0.3Mp, 1/11-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     */
     &msm_camera_sensor_mt9v113,
 #endif
 
 #ifdef CONFIG_OV5642
+    /*
+     * Commented by zh.shj
+     *
+     * Refer to drivers/media/video/msm/ov5642.c
+     * For OV5642: 5.0Mp, 1/4-Inch System-On-A-Chip (SOC) CMOS Digital Image Sensor
+     */
     &msm_camera_sensor_ov5642,
-#endif
-
-#ifdef CONFIG_OV5640
-    &msm_camera_sensor_ov5640,
 #endif
 
 	&hs_device,
@@ -2667,6 +3044,7 @@ static void __init msm_fb_add_devices(void)
 	msm_fb_register_device("lcdc", &lcdc_pdata);
 }
 
+
 static struct i2c_board_info aux_i2c_devices[] = {
 #if 0
 	{
@@ -2680,25 +3058,32 @@ static struct i2c_board_info aux_i2c_devices[] = {
 	{
 		I2C_BOARD_INFO("si4708", 0x10),
 	},
+	
 	{
 		.type         = "taos",
 		.addr         = 0x39,
 	},
+	
 };
+
+
 
 
 
 static struct i2c_board_info aux2_i2c_devices[] = {
-#if 0
+#ifndef CONFIG_MSENSORS_FROM_AUXI2C_TO_I2C
 	{
 		I2C_BOARD_INFO("akm8973", 0x1c),
 	},
+#endif
+#ifndef CONFIG_GSENSORS_FROM_AUXI2C_TO_I2C
 	{
-		.type = "accelerator", //ZTE_FYA_20101122
+		.type = "accelerator", 
 		.addr = 0x1d,
 	},
 #endif
 };
+
 extern struct sys_timer msm_timer;
 
 static void __init msm7x2x_init_irq(void)
@@ -2747,13 +3132,11 @@ static void __init msm7x2x_init_host(void)
 static unsigned long vreg_sts, gpio_sts;
 static struct vreg *vreg_mmc;
 static unsigned mpp_mmc = 2;
-
 struct sdcc_gpio {
 	struct msm_gpio *cfg_data;
 	uint32_t size;
 	struct msm_gpio *sleep_cfg_data;
 };
-
 static struct msm_gpio sdc1_cfg_data[] = {
 	{GPIO_CFG(51, 1, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA), "sdc1_dat_3"},
 	{GPIO_CFG(52, 1, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA), "sdc1_dat_2"},
@@ -2797,29 +3180,32 @@ static struct msm_gpio sdc4_cfg_data[] = {
 	{GPIO_CFG(108, 1, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_8MA), "sdc4_dat_0"},
 	{GPIO_CFG(109, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA), "sdc4_clk"},
 };
-
 static struct sdcc_gpio sdcc_cfg_data[] = {
 	{
 		.cfg_data = sdc1_cfg_data,
 		.size = ARRAY_SIZE(sdc1_cfg_data),
 		.sleep_cfg_data = NULL,
 	},
+	/* SDC2 configs */
 	{
 		.cfg_data = sdc2_cfg_data,
 		.size = ARRAY_SIZE(sdc2_cfg_data),
 		.sleep_cfg_data = sdc2_sleep_cfg_data,
 	},
+	/* SDC3 configs */
 	{
 		.cfg_data = sdc3_cfg_data,
 		.size = ARRAY_SIZE(sdc3_cfg_data),
 		.sleep_cfg_data = NULL,
 	},
+	/* SDC4 configs */
 	{
 		.cfg_data = sdc4_cfg_data,
 		.size = ARRAY_SIZE(sdc4_cfg_data),
 		.sleep_cfg_data = NULL,
 	},
 };
+
 
 static void msm_sdcc_setup_gpio(int dev_id, unsigned int enable)
 {
@@ -2859,7 +3245,6 @@ static uint32_t msm_sdcc_setup_power(struct device *dv, unsigned int vdd)
         {     
             return 0;
         }
-		
 	if (vdd == 0) {
 		if (!vreg_sts)
 			return 0;
@@ -2898,16 +3283,10 @@ static uint32_t msm_sdcc_setup_power(struct device *dv, unsigned int vdd)
 	set_bit(pdev->id, &vreg_sts);
 	return 0;
 }
+
 /* ATHENV+++ */
 static void (*wifi_status_notify_cb)(int card_present, void *dev_id);
 void *wifi_devid;
-//static int msm_sdcc_register_status_notify(void (*callback)(int card_present, void *dev_id), void *dev_id)
-//{	
-//	wifi_status_notify_cb = callback;
-//	wifi_devid = dev_id;
-//	printk("%s: callback %p devid %p\n", __func__, callback, dev_id);
-//	return 0;
-//}
 
 void wifi_detect_change(int on)
 {
@@ -2918,6 +3297,7 @@ void wifi_detect_change(int on)
 }
 EXPORT_SYMBOL(wifi_detect_change);
 /* ATHENV---*/
+
 #ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
 static struct mmc_platform_data msm7x2x_sdc1_data = {
 	.ocr_mask	= MMC_VDD_28_29,
@@ -2936,7 +3316,7 @@ static struct mmc_platform_data msm7x2x_sdc2_data = {
 	.translate_vdd	= msm_sdcc_setup_power,
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 #ifdef CONFIG_MMC_MSM_SDIO_SUPPORT
-#if 0   
+#ifndef CONFIG_ATH_WIFI
 	.sdiowakeup_irq = MSM_GPIO_TO_INT(66),
 #endif
 #endif
@@ -2944,7 +3324,9 @@ static struct mmc_platform_data msm7x2x_sdc2_data = {
 	.msmsdcc_fmid	= 24576000,
 	.msmsdcc_fmax	= 49152000,
 	.nonremovable	= 0,
+	
 	.dummy52_required = 1,
+	
 };
 #endif
 
@@ -2989,6 +3371,7 @@ static void __init msm7x2x_init_mmc(void)
 	msm_add_sdcc(1, &msm7x2x_sdc1_data);
 
 #endif
+
 //if (machine_is_msm7x25_surf() || machine_is_msm7x27_surf() ||
 //machine_is_msm7x27_ffa()) {
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
@@ -2998,6 +3381,7 @@ static void __init msm7x2x_init_mmc(void)
 		msm_add_sdcc(2, &msm7x2x_sdc2_data);
 #endif
 //}
+
 	if (machine_is_msm7x25_surf() || machine_is_msm7x27_surf()) {
 #ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
 		msm_add_sdcc(3, &msm7x2x_sdc3_data);
@@ -3067,11 +3451,24 @@ msm_i2c_gpio_config(int iface, int config_type)
 }
 
 static struct msm_i2c_platform_data msm_i2c_pdata = {
+    /*
+      * Commented by jia.jia, zh.shj
+      *
+      * Increase frequency of I2C clock from 100K to 400K (maximum value)
+      * in order to improve performances of startup and mode switch between
+      * preview and snapshot for camera ONLY
+      *
+      * Set frequency of I2C clock as 100K
+      */
 	.clk_freq = 100000,
 	.rmutex  = 0,
 	.pri_clk = 60,
 	.pri_dat = 61,
 
+    /*
+      * Commented by jia.jia, zh.shj
+      * Disable second msm-i2c interface (merged from v4735)
+      */
 #if 0
 	.aux_clk = 95,
 	.aux_dat = 96,
@@ -3087,6 +3484,10 @@ static void __init msm_device_i2c_init(void)
 	if (gpio_request(61, "i2c_pri_dat"))
 		pr_err("failed to request gpio i2c_pri_dat\n");
 
+    /*
+      * Commented by jia.jia, zh.shj
+      * Disable second msm-i2c interface (merged from v4735)
+      */
 #if 0
 	if (gpio_request(95, "i2c_sec_clk"))
 		pr_err("failed to request gpio i2c_sec_clk\n");
@@ -3106,7 +3507,9 @@ static void __init msm_device_i2c_init(void)
 	msm_device_i2c.dev.platform_data = &msm_i2c_pdata;
 }
 
+
 #ifdef CONFIG_ZTE_PLATFORM
+//USB-HML-001 : USB 3.3V control
 #define MSM_GPIO_USB3V3	    21 
 static unsigned usb_config_power_on =	GPIO_CFG(MSM_GPIO_USB3V3, 0, 
                                                                                 GPIO_OUTPUT, GPIO_PULL_UP, GPIO_2MA);
@@ -3132,6 +3535,7 @@ static int init_usb3v3(void)
 	gpio_free(MSM_GPIO_USB3V3);
 	return 0;
 }	
+//USB-HML-001 end
 
 #endif 
 
@@ -3150,7 +3554,9 @@ static void usb_mpp_init(void)
 	}
 }
 
+ 
  extern void  __init msm_init_pmic_vibrator(void); 
+ 
 
 static ssize_t debug_global_read(struct file *file, char __user *buf,
 				    size_t len, loff_t *offset)
@@ -3177,6 +3583,7 @@ static struct file_operations debug_global_file_ops = {
 	.read = debug_global_read,
 };
 
+
 static void msm7x27_wlan_init(void)
 {
 	int rc = 0;
@@ -3190,15 +3597,64 @@ static void msm7x27_wlan_init(void)
 	}
 }
 
-#ifdef CONFIG_TOUCHSCREEN_VIRTUAL_KEYS
-struct kobject *android_touch_kobj;
-static void touch_sysfs_init(void)
-{	
-	android_touch_kobj = kobject_create_and_add("board_properties", NULL);	
-	if (android_touch_kobj == NULL) 
-	{		
-		printk(KERN_ERR "%s: subsystem_register failed\n", __func__);	
-	}
+#if defined (CONFIG_MACH_BLADE)
+static void touch_vdd(void)
+{
+		gpio_tlmm_config(GPIO_CFG(60, 0, GPIO_OUTPUT,
+					GPIO_NO_PULL, GPIO_16MA), GPIO_ENABLE);
+		gpio_tlmm_config(GPIO_CFG(61, 0, GPIO_OUTPUT,
+					GPIO_NO_PULL, GPIO_16MA), GPIO_ENABLE);
+		gpio_direction_output(60, 0);
+		gpio_direction_output(61, 0);
+		gpio_direction_output(31, 0);
+		gpio_direction_output(29, 0);
+		msleep(250);
+		msleep(250);
+		gpio_direction_output(31, 1);
+		gpio_direction_input(29);	
+}
+#endif
+
+
+//#ifdef CONFIG_ATH_WIFI
+#if 0
+static int wlan_init_power()
+{
+    int ret = 0;
+    struct vreg *vreg = NULL;
+
+    do {
+        vreg = vreg_get(0, "wlan");
+
+        ret = vreg_enable(vreg);
+
+        if(ret) {
+            printk(KERN_ERR"vreg_enable failed\n");
+	    break;
+        } 
+
+        printk(KERN_ERR"[ar6000] 3.3v on\n");
+
+        ret = vreg_set_level(vreg, 1800);
+        if(ret) {
+            printk(KERN_ERR"vreg_set_level failed\n");
+	    break;
+        } 
+      
+        printk(KERN_ERR"[ar6000] 1.8v on\n");
+
+        printk(KERN_ERR"[ar6000] CHIP_PWR_L\n");
+					                   
+        gpio_direction_output(18, 0);
+
+        mdelay(100);
+
+        return 0;
+
+    } while (0);
+
+    return -1;
+
 }
 #endif
 
@@ -3206,9 +3662,11 @@ static void __init msm7x2x_init(void)
 {
 	struct proc_dir_entry *entry;
 	
+
 #ifdef CONFIG_ZTE_FTM_FLAG_SUPPORT
 	zte_ftm_set_value(g_zte_ftm_flag_fixup);
 #endif
+
 
 	if (socinfo_init() < 0)
 		BUG();
@@ -3244,9 +3702,10 @@ static void __init msm7x2x_init(void)
 
 	msm_acpu_clock_init(&msm7x2x_clock_data);
 #ifdef CONFIG_ZTE_PLATFORM
-	init_usb3v3();
+	init_usb3v3();//USB-HML-001 enable ldo.
 	#endif
 #ifdef CONFIG_ARCH_MSM7X27
+	/* Initialize the zero page for barriers and cache ops */
 	/* This value has been set to 160000 for power savings. */
 	/* OEMs may modify the value at their discretion for performance */
 	/* The appropriate maximum replacement for 160000 is: */
@@ -3274,9 +3733,12 @@ static void __init msm7x2x_init(void)
 #endif
 #endif
 
+
 #if defined( CONFIG_TOUCHSCREEN_MSM_LEGACY) || defined( CONFIG_TOUCHSCREEN_MSM)
 	msm_device_tssc.dev.platform_data = &msm_tssc_pdata;
 #endif
+
+
 
 	usb_mpp_init();
 
@@ -3312,17 +3774,26 @@ static void __init msm7x2x_init(void)
 //	msm_device_gadget_peripheral.dev.platform_data = &msm_gadget_pdata;
 #endif
 #endif
+ 
 	msm_init_pmic_vibrator(); 
+ 
 
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 #ifdef CONFIG_MSM_CAMERA
 //	config_camera_off_gpios(); /* might not be necessary */
 #endif
+
+#if defined (CONFIG_MACH_BLADE)
+touch_vdd();
+#endif
+
 	msm_device_i2c_init();
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
-	i2c_register_board_info(1, aux_i2c_devices, ARRAY_SIZE(aux_i2c_devices));
-	i2c_register_board_info(2, aux2_i2c_devices, ARRAY_SIZE(aux2_i2c_devices));
 
+	i2c_register_board_info(1, aux_i2c_devices, ARRAY_SIZE(aux_i2c_devices));
+
+
+	i2c_register_board_info(2, aux2_i2c_devices, ARRAY_SIZE(aux2_i2c_devices));
 #ifdef CONFIG_TOUCHSCREEN_VIRTUAL_KEYS	
 	touch_sysfs_init();
 #endif
@@ -3344,14 +3815,17 @@ static void __init msm7x2x_init(void)
 #endif
 	msm7x2x_init_mmc();
 	bt_power_init();
-
+//#ifdef CONFIG_ATH_WIFI
+#if 0
+	wlan_init_power();
+#endif	
 	if (cpu_is_msm7x27())
 		msm_pm_set_platform_data(msm7x27_pm_data,
 					ARRAY_SIZE(msm7x27_pm_data));
 	else
 		msm_pm_set_platform_data(msm7x25_pm_data,
 					ARRAY_SIZE(msm7x25_pm_data));
-					
+
 	msm7x27_wlan_init();				
 	
 	global = ioremap(SMEM_LOG_GLOBAL_BASE, sizeof(smem_global));
@@ -3402,10 +3876,12 @@ static void __init msm_msm7x2x_allocate_memory_regions(void)
 	unsigned long size;
 
 #if defined(CONFIG_ZTE_PLATFORM) && defined(CONFIG_F3_LOG)
+
     unsigned int len;
     smem_global *global_tmp = (smem_global *)(MSM_RAM_LOG_BASE + PAGE_SIZE) ;
 
     len = global_tmp->f3log;
+
 #endif
 
 	size = pmem_mdp_size;
@@ -3448,7 +3924,9 @@ static void __init msm_msm7x2x_allocate_memory_regions(void)
 			" ebi1 pmem arena\n", size, addr, __pa(addr));
 	}
 
+
 #if defined(CONFIG_ZTE_PLATFORM) && defined(CONFIG_F3_LOG)
+
 	pr_info("length = %d ++ \n", len);
 
 	if (len > 12)
@@ -3464,6 +3942,7 @@ static void __init msm_msm7x2x_allocate_memory_regions(void)
 
 	addr = phys_to_virt(0x08D00000);
 	pr_info("allocating %lu M at %p (%lx physical) for F3\n",size, addr, __pa(addr));
+
 #endif 
 
 }
@@ -3472,6 +3951,7 @@ static void __init msm7x2x_map_io(void)
 {
 	msm_map_common_io();
 	msm_msm7x2x_allocate_memory_regions();
+
 
 #if 0
 #ifdef CONFIG_CACHE_L2X0
@@ -3488,8 +3968,10 @@ static void __init msm7x2x_map_io(void)
 #ifdef CONFIG_CACHE_L2X0
 	l2x0_init(MSM_L2CC_BASE, 0x00068012, 0xfe000000);
 #endif
+
 }
 
+//ruanmeisi
 #ifdef CONFIG_ZTE_PLATFORM
 
 #define ATAG_ZTEFTM 0x5d53cd73
@@ -3527,6 +4009,7 @@ int get_ftm_from_tag(void)
 EXPORT_SYMBOL(get_ftm_from_tag);
 
 #endif
+//end
 
 MACHINE_START(MSM7X27_SURF, "QCT MSM7x27 SURF")
 #ifdef CONFIG_MSM_DEBUG_UART
@@ -3576,17 +4059,18 @@ MACHINE_START(MSM7X25_FFA, "QCT MSM7x25 FFA")
 	.timer		= &msm_timer,
 MACHINE_END
 
-MACHINE_START(SKATE, "skate")
+MACHINE_START(BLADE, "blade")
 #ifdef CONFIG_MSM_DEBUG_UART
 	.phys_io        = MSM_DEBUG_UART_PHYS,
 	.io_pg_offst    = ((MSM_DEBUG_UART_BASE) >> 18) & 0xfffc,
 #endif
 	.boot_params	= PHYS_OFFSET + 0x100,
 #ifdef CONFIG_ZTE_PLATFORM
-  .fixup          = zte_fixup,
+        .fixup          = zte_fixup,
 #endif
 	.map_io		= msm7x2x_map_io,
 	.init_irq	= msm7x2x_init_irq,
 	.init_machine	= msm7x2x_init,
 	.timer		= &msm_timer,
 MACHINE_END
+
